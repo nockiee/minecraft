@@ -20,7 +20,7 @@ class Mapmanager():
         self.block = loader.loadModel(self.model)
         self.block.setTexture(loader.loadTexture(self.texture))
         self.block.setPos(pos)
-        self.color=self.getColor(int(pos[2])) # с новым годом
+        self.color=self.getColor(int(pos[2]))
         self.block.setColor(self.color)
         self.block.setTag("at", str(pos))
         self.block.reparentTo(self.land)
@@ -37,6 +37,7 @@ class Mapmanager():
         new = self.findHighetsEmpty(pos)
         if new[2] <= z+1:
             self.addBlock(new)
+            
 
 
     def delBlockFrom(self, position):

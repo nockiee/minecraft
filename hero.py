@@ -1,4 +1,5 @@
 import math
+import random
 
 class Hero():
     def __init__(self, pos, land):
@@ -17,6 +18,20 @@ class Hero():
         base.win.movePointer(0, self.lastMouseX, self.lastMouseY)
         base.taskMgr.add(self.mouseTask, "mouseTask")
 
+        self.build_sound = base.loader.loadSfx("sounds/blockadd.mp3")
+        self.destroy_sound = base.loader.loadSfx("sounds/blockremove.mp3")
+        self.changeMode_sound = base.loader.loadSfx("sounds/change_mode.mp3")
+
+        self.footstep_sound = base.loader.loadSfx("sounds/footstep_1.wav")
+        self.footstep_sound2 = base.loader.loadSfx("sounds/footstep_2.wav")
+
+    def play_footstep_sound(self):
+        n = random.randint(1,2)
+        if n == 1:
+            self.footstep_sound.play()
+        self.footstep_sound2.play()
+
+
     def Pick(self):   
         md = base.win.getPointer(0)
         x = md.getX()
@@ -33,12 +48,10 @@ class Hero():
             self.sync_hero_with_camera()
 
     def mouseTask(self, task):
-        """Task to process mouse movements."""
         self.Pick()
         return task.cont
 
     def clamp(value, min_value, max_value):
-        """Clamp a value between min_value and max_value."""
         return max(min(value, max_value), min_value)
 
     def cameraBind(self):
@@ -97,19 +110,19 @@ class Hero():
         self.hero.setH(base.camera.getH())
 
     def forward(self):
-        angle = base.camera.getH() % 360  # Угол камеры
+        angle = self.hero.getH() % 360  # Угол камеры
         self.move_to(angle)
 
     def back(self):
-        angle = (base.camera.getH() + 180) % 360  # Угол камеры + 180° (обратное направление)
+        angle = (self.hero.getH() + 180) % 360  # Угол камеры + 180° (обратное направление)
         self.move_to(angle)
 
     def left(self):
-        angle = (base.camera.getH() + 90) % 360  # Угол камеры + 90° (влево)
+        angle = (self.hero.getH() + 90) % 360  # Угол камеры + 90° (влево)
         self.move_to(angle)
 
     def right(self):
-        angle = (base.camera.getH() - 90) % 360  # Угол камеры - 90° (вправо)
+        angle = (self.hero.getH() - 90) % 360  # Угол камеры - 90° (вправо)
         self.move_to(angle)
 
     def up(self):
@@ -129,20 +142,42 @@ class Hero():
     def move_to(self, angle):
         if self.mode:
             dx, dy = self.calculate_direction(angle)
-            new_x = self.hero.getX() + dx
-            new_y = self.hero.getY() + dy
+            new_x = self.hero.getX() + dx * 0.2  # Шаг движения (умножение на коэффициент)
+            new_y = self.hero.getY() + dy * 0.2
             self.hero.setPos(new_x, new_y, self.hero.getZ())  # Перемещаем персонажа
 
 
     def calculate_direction(self, angle):
-        # Перевод угла в радианы
-        rad_angle = math.radians(angle)
-        # Вычисление направления
-        dx = -math.sin(rad_angle)  # Смещение по X (с отрицанием, чтобы соответствовать координатной системе Panda3D)
-        dy = math.cos(rad_angle)   # Смещение по Y
+        # Нормализуем угол (0–360)
+        angle %= 360
+
+        # Заранее определённые направления для основных углов
+        directions = {
+            0: (0, 1),    # Вверх
+            90: (1, 0),   # Вправо
+            180: (0, -1), # Вниз
+            270: (-1, 0)  # Влево
+        }
+
+        # Определяем соседние ключевые углы
+        lower_angle = (angle // 90) * 90  # Нижняя граница
+        upper_angle = (lower_angle + 90) % 360  # Верхняя граница
+
+        # Берём векторы для соседних углов
+        x1, y1 = directions[lower_angle]
+        x2, y2 = directions[upper_angle]
+
+        # Находим вес интерполяции (0–1)
+        t = (angle - lower_angle) / 90
+
+        # Линейная интерполяция между двумя векторами
+        dx = x1 + t * (x2 - x1)
+        dy = y1 + t * (y2 - y1)
+
         return dx, dy
 
 
+    def look_at(self, angle):
         pos_x = round(self.hero.getX())
         pos_y = round(self.hero.getY())
         pos_z = round(self.hero.getZ())
@@ -162,32 +197,18 @@ class Hero():
         self.hero.setPos(pos)
 
     def check_dir(self, angle):
-        if angle >= 0 and angle <= 20:
+        angle %= 360  # Нормализация угла
+        if 0 <= angle < 45 or 315 <= angle < 360:
             return (0, -1)
-
-        elif angle >= 21 and angle <= 65:
-            return (1, -1)
-
-        elif angle >= 66 and angle <= 110:
+        elif 45 <= angle < 135:
             return (1, 0)
-
-        elif angle >= 111 and angle <= 155:
-            return (1, 1)
-
-        elif angle >= 156 and angle <= 200:
+        elif 135 <= angle < 225:
             return (0, 1)
-
-        elif angle >= 201 and angle <= 245:
-            return (-1, 1)
-
-        elif angle >= 246 and angle <= 290:
+        elif 225 <= angle < 315:
             return (-1, 0)
-
-        elif angle >= 291 and angle <= 335:
-            return (-1, -1)
-
         else:
             return (0, -1)
+
 
 
     def changeView(self):
